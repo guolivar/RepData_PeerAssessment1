@@ -157,7 +157,9 @@ Comparing the diurnal profile for weekday and weekends:
 ```{r plot_weekdays, fig.width=12}
 ggplot(weekday.daily.activity)+
   geom_line(aes(x=interval, y=steps))+
-  facet_grid(daytype ~. )
+  facet_grid(daytype ~. )+
+  xlab('Interval')+
+  ylab('Number of steps')
 
 ```
 
