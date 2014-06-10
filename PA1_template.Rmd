@@ -1,15 +1,22 @@
-# Reproducible Research: Peer Assessment 1
+---
+title: "Reproducible Research: Peer Assessment 1"
+output:
+  html_document:
+    toc: true
+---
+
 This assignment makes use of data from a personal activity monitoring device.
 This device collects data at 5 minute intervals through out the day. 
 The data consists of two months of data from an anonymous individual collected
 during the months of October and November, 2012 and include the number of steps 
 taken in 5 minute intervals each day.  
 
+
 ### Libraries used for this analysis   
 
 ```{r load_libs}
-library(ggplot2)
-
+library('ggplot2')
+library('timeDate')
 ```
 
 ## Loading and preprocessing the data
@@ -24,26 +31,13 @@ activity.data<-read.csv('./activity.csv')
 summary(activity.data)
 ```
 
-This summary indicates that the `date` field is a date as text but the
-`interval` field is a number. These data fields will be converted to a
-_POSIXct_ type.  
-```{r prep_data}
-# Move date field to day field
-activity.data$day<-activity.data$date
-# Build POSIXct date field
-activity.data$date<-as.POSIXct(paste(activity.data$day,
-                                     sprintf('%04d',activity.data$interval)),
-                                     tz='GMT',format="%Y-%m-%d %H%M")
-summary(activity.data)
-```
-
 ## What is mean total number of steps taken per day?
 The data gives steps for 5 minutes intervals, so, daily summaries must be
 constructed to estimate the average number of steps per day.  
 
 ```{r daily_hist,fig.width=12}
 # Calculate total daily steps
-daily_summaries<-aggregate( data=activity.data,steps~day, sum)
+daily_summaries<-aggregate( data=activity.data,steps~date, sum)
 # Mean daily steps. Rmove NA
 me_daily<-mean(daily_summaries$steps,na.rm = TRUE)
 # Median daily steps. Rmove NA
@@ -55,7 +49,8 @@ hist(daily_summaries$steps,breaks=10,
      ylab='Number of days')
 ```
 
-The mean number of steps per day were `r me_daily` and the median number of steps per day were `r md_daily`  
+The mean number of steps per day were `r me_daily` 
+and the median number of steps per day were `r md_daily`  
 
 ## What is the average daily activity pattern?
 For this summary we need to aggregate the data by the `interval` field.  
@@ -96,32 +91,75 @@ interval.mean<-aggregate( data=filled.activity.data,steps~interval, mean )
 # Standard deviation of number of steps per interval
 interval.sd<-aggregate( data=filled.activity.data,steps~interval, sd )
 
-for (int in 1:length(interval.sd[,1]){
+for (int in 1:length(interval.sd[,1])){
+int=1
   # Number of missing data for this interval
-  miss_data<-subset(filled.activity.data,
-                    (filled.activity.data$interval==interval.sd[60,1])
-                     & (is.na(filled.activity.data$steps)))
-  n_miss<-length(miss_data[,1])
+  n_miss<-sum((filled.activity.data$interval==interval.sd[int,1])
+              & (is.na(filled.activity.data$steps)))
+  # Generate the replacement data
   samples<-rnorm(n_miss,interval.mean[int,2],interval.sd[int,2])
-  for (idx in 1:n_miss){
-   filled.activity.data[activity.data$interval==miss_data$] 
-  }
+  # Replace the missing values
+  filled.activity.data$steps[
+    (filled.activity.data$interval==interval.sd[int,1])
+    & (is.na(filled.activity.data$steps))]=samples
 }
 ```
 
-    Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+Summarizing these new data  
 
-    Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r summary_daily_filled}
+# Calculate total daily steps
+filled.daily_summaries<-aggregate( data=filled.activity.data,steps~date, sum)
+# Mean daily steps. Rmove NA
+filled.me_daily<-mean(filled.daily_summaries$steps,na.rm = TRUE)
+# Median daily steps. Rmove NA
+filled.md_daily<-median(filled.daily_summaries$steps,na.rm = TRUE)
+# Histogram of daily number of steps
+hist(filled.daily_summaries$steps,breaks=10,
+     main='Daily steps distribution\n(filled data)',
+     xlab='Number of steps per day',
+     ylab='Number of days')
+```
 
-    Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+Comparing the results of filling against not filling the missing data  
 
+| Statistic | Raw data | Missing data replaced |
+|:------:|-----:|---------:|
+| Mean  |  `r me_daily`  |    `r filled.me_daily`   |
+| Median  |  `r md_daily` |   `r filled.md_daily`   |
+
+The result of filling the missing data was that the frequency of
+lower daily step counts which resulted in lower mean and median values.
 
 ## Are there differences in activity patterns between weekdays and weekends?
-For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
 
-    Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+To facilitate this part of the analysis, a `timeDate` object
+was created using the `date` field.  
+```{r prep_data}
+# Convert date field into timeDate object
+timeDate_data<-timeDate(activity.data$date)
+```
 
-    Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). The plot should look something like the following, which was creating using simulated data:
+Adding a factor variable to separate weekday from weekend:  
+```{r weekday_factor}
+filled.activity.data$daytype<-factor(
+  isWeekday(timeDate_data),
+  labels=c('Weekend','Weekday'))
+```
+
+Now summarizing the steps per interval for weekdays and weekends
+```{r daily_activity_weekday}
+weekday.daily.activity<-aggregate( data=filled.activity.data,
+                                   steps~interval+daytype, mean )
+```
+
+Comparing the diurnal profile for weekday and weekends:  
+```{r plot_weekdays, fig.width=12}
+ggplot(weekday.daily.activity)+
+  geom_line(aes(x=interval, y=steps))+
+  facet_grid(daytype ~. )
+
+```
 
 ## System information
 The preceeding analysis was performed in the following system:  
