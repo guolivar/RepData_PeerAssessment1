@@ -12,11 +12,13 @@ during the months of October and November, 2012 and include the number of steps
 taken in 5 minute intervals each day.  
 
 
-### Libraries used for this analysis   
+### Environment setup for this analysis   
 
 ```{r load_libs}
 library('ggplot2')
 library('timeDate')
+# Set the seed
+set.seed(10)
 ```
 
 ## Loading and preprocessing the data
@@ -49,8 +51,8 @@ hist(daily_summaries$steps,breaks=10,
      ylab='Number of days')
 ```
 
-The mean number of steps per day were `r me_daily` 
-and the median number of steps per day were `r md_daily`  
+The mean number of steps per day were **`r sprintf('%5.f',me_daily)`** 
+and the median number of steps per day were **`r sprintf('%5.f',md_daily)`**  
 
 ## What is the average daily activity pattern?
 For this summary we need to aggregate the data by the `interval` field.  
@@ -67,7 +69,8 @@ max_steps<-max(daily.activity$steps)
 max_interval<-daily.activity[which.max(daily.activity$steps),1]
 ```
 
-The maximum average number of steps in a 5 minute interval is `r max_steps` which corresponds to the interval ending at `r sprintf('%04.f',max_interval)` 
+The maximum average number of steps in a 5 minute interval is **`r max_steps`** which corresponds to the interval ending at
+**`r sprintf('%04.f',max_interval)`** 
 
 ## Imputing missing values
 
@@ -80,8 +83,13 @@ sum(is.na(activity.data$steps))
 ### Filling the missing values
 From the analysis so far, it is clear that there is a diurnal pattern on the
 number of steps taken during a 5 minute interval. To fill missing values while
-minimising the impact on the data, we will use the average and standard
-deviation of steps for each 5 minute interval to sample the new values.  
+minimising the impact on the data, we will use the following strategy:
+
+1. Estimate the mean and standard deviation of every time interval.  
+1. For each interval, sample a random number from the normal distribution
+with the mean and standard deviation for that interval.  
+1. Replace the missing values with those new random samples.
+
 
 ```{r fill_missing}
 # New data frame to be filled
@@ -90,7 +98,6 @@ filled.activity.data<-activity.data
 interval.mean<-aggregate( data=filled.activity.data,steps~interval, mean )
 # Standard deviation of number of steps per interval
 interval.sd<-aggregate( data=filled.activity.data,steps~interval, sd )
-
 for (int in 1:length(interval.sd[,1])){
 int=1
   # Number of missing data for this interval
@@ -125,8 +132,8 @@ Comparing the results of filling against not filling the missing data
 
 | Statistic | Raw data | Missing data replaced |
 |:------:|-----:|---------:|
-| Mean  |  `r me_daily`  |    `r filled.me_daily`   |
-| Median  |  `r md_daily` |   `r filled.md_daily`   |
+| Mean  |  `r sprintf('%5.f',me_daily)`  |    `r sprintf('%5.f',filled.me_daily)`   |
+| Median  |  `r sprintf('%5.f',md_daily)` |   `r sprintf('%5.f',filled.md_daily)`   |
 
 The result of filling the missing data was that the frequency of
 lower daily step counts which resulted in lower mean and median values.
@@ -160,7 +167,6 @@ ggplot(weekday.daily.activity)+
   facet_grid(daytype ~. )+
   xlab('Interval')+
   ylab('Number of steps')
-
 ```
 
 ## System information
